@@ -1,0 +1,14 @@
+platform :ios, '11.0'
+use_frameworks!
+
+target 'AMPTracker_Example' do
+  pod 'AMPTracker/Amplitude', :path => '../'
+
+  target 'AMPTracker_Tests' do
+    inherit! :search_paths
+
+    pod 'Quick', '~> 1.2.0'
+    pod 'Nimble', '~> 7.0'
+    pod 'Amplitude'
+  end
+end

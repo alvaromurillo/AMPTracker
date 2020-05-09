@@ -1,0 +1,34 @@
+PODS:
+  - Amplitude (5.1.0)
+  - AMPTracker/Amplitude (0.1.0):
+    - Amplitude
+    - AMPTracker/Core
+  - AMPTracker/Core (0.1.0)
+  - Nimble (7.3.4)
+  - Quick (1.2.0)
+
+DEPENDENCIES:
+  - Amplitude
+  - AMPTracker/Amplitude (from `../`)
+  - Nimble (~> 7.0)
+  - Quick (~> 1.2.0)
+
+SPEC REPOS:
+  trunk:
+    - Amplitude
+    - Nimble
+    - Quick
+
+EXTERNAL SOURCES:
+  AMPTracker:
+    :path: "../"
+
+SPEC CHECKSUMS:
+  Amplitude: 1d3d18f82ba9852011aa7b9a741eac616d78fa82
+  AMPTracker: 6345149119ae50005fc359298b3b6a398972df5d
+  Nimble: 051e3d8912d40138fa5591c78594f95fb172af37
+  Quick: 58d203b1c5e27fff7229c4c1ae445ad7069a7a08
+
+PODFILE CHECKSUM: 162a264539d8222c7ee9c98b8f69d32413dd065e
+
+COCOAPODS: 1.9.1
