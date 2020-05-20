@@ -21,6 +21,7 @@ Helper to deal with common analytics frameworks
   s.source           = { :git => 'https://github.com/alvaromurillo/AMPTracker.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '11.0'
+  s.tvos.deployment_target = '11.0'
   s.default_subspec = 'Core'
 
   s.subspec 'Core' do |sp|
