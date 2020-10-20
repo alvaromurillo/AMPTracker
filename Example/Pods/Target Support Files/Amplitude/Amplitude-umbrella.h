@@ -10,14 +10,17 @@
 #endif
 #endif
 
+#import "AMPBubbleView.h"
+#import "AMPConfigManager.h"
 #import "AMPConstants.h"
 #import "AMPDatabaseHelper.h"
 #import "AMPDeviceInfo.h"
+#import "AMPEventExplorer.h"
 #import "AMPIdentify.h"
+#import "AMPInfoViewController.h"
 #import "Amplitude+SSLPinning.h"
 #import "Amplitude.h"
 #import "AmplitudePrivate.h"
-#import "AMPLocationManagerDelegate.h"
 #import "AMPRevenue.h"
 #import "AMPTrackingOptions.h"
 #import "AMPURLConnection.h"

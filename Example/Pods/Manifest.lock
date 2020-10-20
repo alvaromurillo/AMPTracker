@@ -1,5 +1,5 @@
 PODS:
-  - Amplitude (5.1.0)
+  - Amplitude (7.1.0)
   - AMPTracker/Amplitude (0.1.0):
     - Amplitude
     - AMPTracker/Core
@@ -24,11 +24,11 @@ EXTERNAL SOURCES:
     :path: "../"
 
 SPEC CHECKSUMS:
-  Amplitude: 1d3d18f82ba9852011aa7b9a741eac616d78fa82
-  AMPTracker: 6345149119ae50005fc359298b3b6a398972df5d
+  Amplitude: 474898124a68f557c201db8ddc80f411da7ba8f1
+  AMPTracker: 4b2d52819120f9d3e97f9d5ab2843a9226d49f44
   Nimble: 051e3d8912d40138fa5591c78594f95fb172af37
   Quick: 58d203b1c5e27fff7229c4c1ae445ad7069a7a08
 
-PODFILE CHECKSUM: 162a264539d8222c7ee9c98b8f69d32413dd065e
+PODFILE CHECKSUM: 09f36e15eb9d081be25123e4caa23e9f8f1facb1
 
-COCOAPODS: 1.9.1
+COCOAPODS: 1.9.3

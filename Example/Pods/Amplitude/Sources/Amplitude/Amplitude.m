@@ -48,8 +48,8 @@
 
 #import "Amplitude.h"
 #import "AmplitudePrivate.h"
-#import "AMPLocationManagerDelegate.h"
 #import "AMPConstants.h"
+#import "AMPConfigManager.h"
 #import "AMPDeviceInfo.h"
 #import "AMPURLConnection.h"
 #import "AMPURLSession.h"
@@ -73,6 +73,10 @@
 #import <Cocoa/Cocoa.h>
 #endif
 
+#if TARGET_OS_IOS || TARGET_OS_MACCATALYST
+#import "AMPEventExplorer.h"
+#endif
+
 @interface Amplitude()
 
 @property (nonatomic, strong) NSOperationQueue *backgroundQueue;
@@ -83,7 +87,9 @@
 @property (nonatomic, assign) long long sessionId;
 @property (nonatomic, assign) BOOL backoffUpload;
 @property (nonatomic, assign) int backoffUploadBatchSize;
-
+#if TARGET_OS_IOS || TARGET_OS_MACCATALYST
+@property (nonatomic, strong) AMPEventExplorer *eventExplorer;
+#endif
 @end
 
 NSString *const kAMPSessionStartEvent = @"session_start";
@@ -117,12 +123,6 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 
     AMPDeviceInfo *_deviceInfo;
     BOOL _useAdvertisingIdForDeviceId;
-    BOOL _disableIdfaTracking;
-
-    CLLocation *_lastKnownLocation;
-    BOOL _locationListeningEnabled;
-    CLLocationManager *_locationManager;
-    AMPLocationManagerDelegate *_locationManagerDelegate;
 
     AMPTrackingOptions *_inputTrackingOptions;
     AMPTrackingOptions *_appliedTrackingOptions;
@@ -169,70 +169,6 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
     return client;
 }
 
-+ (void)initializeApiKey:(NSString*) apiKey {
-    [[Amplitude instance] initializeApiKey:apiKey];
-}
-
-+ (void)initializeApiKey:(NSString*) apiKey userId:(NSString*) userId {
-    [[Amplitude instance] initializeApiKey:apiKey userId:userId];
-}
-
-+ (void)logEvent:(NSString*) eventType {
-    [[Amplitude instance] logEvent:eventType];
-}
-
-+ (void)logEvent:(NSString*) eventType withEventProperties:(NSDictionary*) eventProperties {
-    [[Amplitude instance] logEvent:eventType withEventProperties:eventProperties];
-}
-
-+ (void)logRevenue:(NSNumber*) amount {
-    [[Amplitude instance] logRevenue:amount];
-}
-
-+ (void)logRevenue:(NSString*) productIdentifier quantity:(NSInteger) quantity price:(NSNumber*) price {
-    [[Amplitude instance] logRevenue:productIdentifier quantity:quantity price:price];
-}
-
-+ (void)logRevenue:(NSString*) productIdentifier quantity:(NSInteger) quantity price:(NSNumber*) price receipt:(NSData*) receipt {
-    [[Amplitude instance] logRevenue:productIdentifier quantity:quantity price:price receipt:receipt];
-}
-
-+ (void)uploadEvents {
-    [[Amplitude instance] uploadEvents];
-}
-
-+ (void)setUserProperties:(NSDictionary*) userProperties {
-    [[Amplitude instance] setUserProperties:userProperties];
-}
-
-+ (void)setUserId:(NSString*) userId {
-    [[Amplitude instance] setUserId:userId];
-}
-
-+ (void)enableLocationListening {
-    [[Amplitude instance] enableLocationListening];
-}
-
-+ (void)disableLocationListening {
-    [[Amplitude instance] disableLocationListening];
-}
-
-+ (void)useAdvertisingIdForDeviceId {
-    [[Amplitude instance] useAdvertisingIdForDeviceId];
-}
-
-+ (void)printEventsCount {
-    [[Amplitude instance] printEventsCount];
-}
-
-+ (NSString*)getDeviceId {
-    return [[Amplitude instance] getDeviceId];
-}
-
-+ (void)updateLocation {
-    [[Amplitude instance] updateLocation];
-}
-
 #pragma mark - Main class methods
 - (instancetype)init {
     return [self initWithInstanceName:nil];
@@ -253,12 +189,10 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 #endif
 
         _initialized = NO;
-        _locationListeningEnabled = YES;
         _sessionId = -1;
         _updateScheduled = NO;
         _updatingCurrently = NO;
         _useAdvertisingIdForDeviceId = NO;
-        _disableIdfaTracking = NO;
         _backoffUpload = NO;
         _offline = NO;
         _serverUrl = kAMPEventLogUrl;
@@ -349,23 +283,13 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
             [self->_backgroundQueue setSuspended:NO];
         }];
 
-        // CLLocationManager must be created on the main thread
-        dispatch_async(dispatch_get_main_queue(), ^{
-            Class CLLocationManager = NSClassFromString(@"CLLocationManager");
-            self->_locationManager = [[CLLocationManager alloc] init];
-            self->_locationManagerDelegate = [[AMPLocationManagerDelegate alloc] init];
-            SEL setDelegate = NSSelectorFromString(@"setDelegate:");
-            [self->_locationManager performSelector:setDelegate withObject:self->_locationManagerDelegate];
-        });
-
         [self addObservers];
     }
     return self;
 }
 
 // maintain backwards compatibility on default instance
-- (BOOL) migrateEventsDataToDB
-{
+- (BOOL)migrateEventsDataToDB {
     NSDictionary *eventsData = [self unarchive:_eventsDataPath];
     if (eventsData == nil) {
         return NO;
@@ -471,9 +395,9 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
  * SetUserId: client explicitly initialized with a userId (can be nil).
  * If setUserId is NO, then attempt to load userId from saved eventsData.
  */
-- (void)initializeApiKey:(NSString*)apiKey
-                  userId:(NSString*) userId
-               setUserId:(BOOL) setUserId {
+- (void)initializeApiKey:(NSString *)apiKey
+                  userId:(NSString *)userId
+               setUserId:(BOOL)setUserId {
     if (apiKey == nil) {
         AMPLITUDE_ERROR(@"ERROR: apiKey cannot be nil in initializeApiKey:");
         return;
@@ -495,7 +419,7 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
         self.apiKey = apiKey;
 
         [self runOnBackgroundQueue:^{
-            self->_deviceInfo = [[AMPDeviceInfo alloc] init:self->_disableIdfaTracking];
+            self->_deviceInfo = [[AMPDeviceInfo alloc] init];
             [self initializeDeviceId];
             if (setUserId) {
                 [self setUserId:userId];
@@ -509,12 +433,15 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
         // UIApplication methods are only allowed on the main thread so need to dispatch this synchronously to the main thread.
         void (^checkInForeground)(void) = ^{
         #if !TARGET_OS_OSX
-            UIApplication *app = [self getSharedApplication];
+            UIApplication *app = [AMPUtils getSharedApplication];
             if (app != nil) {
                 UIApplicationState state = app.applicationState;
                 if (state != UIApplicationStateBackground) {
                     [self runOnBackgroundQueue:^{
         #endif
+                        // The earliest time to fetch dynamic config
+                        [self refreshDynamicConfig];
+                        
                         NSNumber* now = [NSNumber numberWithLongLong:[[self currentTime] timeIntervalSince1970] * 1000];
                         [self startOrContinueSessionNSNumber:now];
                         self->_inForeground = YES;
@@ -527,21 +454,22 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
         };
         [self runSynchronouslyOnMainQueue:checkInForeground];
         _initialized = YES;
-    }
-}
+        
+        #if TARGET_OS_IOS || TARGET_OS_MACCATALYST
+        // Release build
+        #if !RELEASE
+        if (self.showEventExplorer) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^(void) {
 
-#if !TARGET_OS_OSX
-- (UIApplication *)getSharedApplication {
-    Class UIApplicationClass = NSClassFromString(@"UIApplication");
-    if (UIApplicationClass && [UIApplicationClass respondsToSelector:@selector(sharedApplication)]) {
-        return [UIApplication performSelector:@selector(sharedApplication)];
+                if (self.eventExplorer == nil) {
+                    self.eventExplorer = [[AMPEventExplorer alloc] initWithInstanceName:self.instanceName];
+                }
+                [self.eventExplorer showBubbleView];
+            });
+        }
+        #endif
+        #endif
     }
-    return nil;
-}
-#endif
-
-- (void)initializeApiKey:(NSString*) apiKey userId:(NSString*) userId startSession:(BOOL)startSession {
-    [self initializeApiKey:apiKey userId:userId];
 }
 
 /**
@@ -733,32 +661,20 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 
     NSMutableDictionary *apiProperties = [event valueForKey:@"api_properties"];
 
-    NSString* advertiserID = _deviceInfo.advertiserID;
-    if ([_appliedTrackingOptions shouldTrackIDFA] && advertiserID) {
-        [apiProperties setValue:advertiserID forKey:@"ios_idfa"];
+    if ([_appliedTrackingOptions shouldTrackIDFA]) {
+        NSString* advertiserID = [self getAdSupportID];
+        if (advertiserID != nil) {
+            [apiProperties setValue:advertiserID forKey:@"ios_idfa"];
+        }
     }
     NSString* vendorID = _deviceInfo.vendorID;
     if ([_appliedTrackingOptions shouldTrackIDFV] && vendorID) {
         [apiProperties setValue:vendorID forKey:@"ios_idfv"];
     }
-    
-    if ([_appliedTrackingOptions shouldTrackLatLng] && _lastKnownLocation != nil) {
-        @synchronized (_locationManager) {
-            NSMutableDictionary *location = [NSMutableDictionary dictionary];
 
-            // Need to use NSInvocation because coordinate selector returns a C struct
-            SEL coordinateSelector = NSSelectorFromString(@"coordinate");
-            NSMethodSignature *coordinateMethodSignature = [_lastKnownLocation methodSignatureForSelector:coordinateSelector];
-            NSInvocation *coordinateInvocation = [NSInvocation invocationWithMethodSignature:coordinateMethodSignature];
-            [coordinateInvocation setTarget:_lastKnownLocation];
-            [coordinateInvocation setSelector:coordinateSelector];
-            [coordinateInvocation invoke];
-            CLLocationCoordinate2D lastKnownLocationCoordinate;
-            [coordinateInvocation getReturnValue:&lastKnownLocationCoordinate];
-
-            [location setValue:[NSNumber numberWithDouble:lastKnownLocationCoordinate.latitude] forKey:@"lat"];
-            [location setValue:[NSNumber numberWithDouble:lastKnownLocationCoordinate.longitude] forKey:@"lng"];
-
+    if ([_appliedTrackingOptions shouldTrackLatLng] && self.locationInfoBlock != nil) {
+        NSDictionary *location = self.locationInfoBlock();
+        if (location != nil) {
             [apiProperties setValue:location forKey:@"location"];
         }
     }
@@ -902,6 +818,16 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 
         [self makeEventUploadPostRequest:self->_serverUrl events:eventsString numEvents:numEvents maxEventId:maxEventId maxIdentifyId:maxIdentifyId];
     }];
+}
+
+- (void)refreshDynamicConfig {
+    if (self.useDynamicConfig) {
+        __weak typeof(self) weakSelf = self;
+        [[AMPConfigManager sharedInstance] refresh:^{
+            __strong typeof(self) strongSelf = weakSelf;
+            strongSelf->_serverUrl = [AMPConfigManager sharedInstance].ingestionEndpoint;
+        }];
+    }
 }
 
 - (long long)getNextSequenceNumber {
@@ -1102,13 +1028,11 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 
 - (void)enterForeground {
 #if !TARGET_OS_OSX
-    UIApplication *app = [self getSharedApplication];
+    UIApplication *app = [AMPUtils getSharedApplication];
     if (app == nil) {
         return;
     }
 #endif
-
-    [self updateLocation];
 
     NSNumber* now = [NSNumber numberWithLongLong:[[self currentTime] timeIntervalSince1970] * 1000];
 
@@ -1117,6 +1041,9 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
     [self endBackgroundTaskIfNeeded];
 #endif
     [self runOnBackgroundQueue:^{
+        // Fetch the data ingestion endpoint based on current device's geo location.
+        
+        [self refreshDynamicConfig];
         [self startOrContinueSessionNSNumber:now];
         self->_inForeground = YES;
         [self uploadEvents];
@@ -1125,7 +1052,7 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 
 - (void)enterBackground {
 #if !TARGET_OS_OSX
-    UIApplication *app = [self getSharedApplication];
+    UIApplication *app = [AMPUtils getSharedApplication];
     if (app == nil) {
         return;
     }
@@ -1152,7 +1079,7 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 - (void)endBackgroundTaskIfNeeded {
 #if !TARGET_OS_OSX
     if (_uploadTaskID != UIBackgroundTaskInvalid) {
-        UIApplication *app = [self getSharedApplication];
+        UIApplication *app = [AMPUtils getSharedApplication];
         if (app == nil) {
             return;
         }
@@ -1284,10 +1211,6 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 
 - (NSNumber*)lastEventTime {
     return [self.dbHelper getLongValue:PREVIOUS_SESSION_TIME];
-}
-
-- (void)startSession {
-    return;
 }
 
 - (void)identify:(AMPIdentify *)identify {
@@ -1484,37 +1407,23 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
     }];
 }
 
-#pragma mark - location methods
-
-- (void)updateLocation {
-    if (_locationListeningEnabled) {
-        CLLocation *location = [_locationManager location];
-        @synchronized (_locationManager) {
-            if (location != nil) {
-                _lastKnownLocation = location;
-            }
-        }
-    }
-}
-
-- (void)enableLocationListening {
-    _locationListeningEnabled = YES;
-    [self updateLocation];
-}
-
-- (void)disableLocationListening {
-    _locationListeningEnabled = NO;
-}
-
 - (void)useAdvertisingIdForDeviceId {
     _useAdvertisingIdForDeviceId = YES;
 }
 
-- (void)disableIdfaTracking {
-    _disableIdfaTracking = YES;
+#pragma mark - Getters for device data
+- (NSString*)getAdSupportID {
+    NSString *result = nil;
+    if (self.adSupportBlock != nil && [_appliedTrackingOptions shouldTrackIDFA]) {
+        result = self.adSupportBlock();
+    }
+    // IDFA access was denied or still in progress.
+    if ([result isEqualToString:@"00000000-0000-0000-0000-000000000000"]) {
+        result = nil;
+    }
+    return result;
 }
 
-#pragma mark - Getters for device data
 - (NSString*)getDeviceId {
     return self.deviceId;
 }
@@ -1537,7 +1446,7 @@ static NSString *const SEQUENCE_NUMBER = @"sequence_number";
 - (NSString*)_getDeviceId {
     NSString *deviceId = nil;
     if (_useAdvertisingIdForDeviceId && [_appliedTrackingOptions shouldTrackIDFA]) {
-        deviceId = _deviceInfo.advertiserID;
+        deviceId = [self getAdSupportID];
     }
 
     // return identifierForVendor

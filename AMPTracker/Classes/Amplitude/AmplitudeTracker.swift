@@ -17,11 +17,11 @@ public final class AmplitudeTracker: AMPTrackerClient {
     }
 
     public func setup() {
-        Amplitude.instance()?.initializeApiKey(apiKey)
+        Amplitude.instance().initializeApiKey(apiKey)
     }
 
     public func set(userID: String) {
-        Amplitude.instance()?.setUserId(userID, startNewSession: false)
+        Amplitude.instance().setUserId(userID, startNewSession: false)
     }
 
     public func set(property: String, value: Any) {
@@ -37,23 +37,23 @@ public final class AmplitudeTracker: AMPTrackerClient {
         }
         let identify = AMPIdentify()
         identify.set(property, value: convertedType)
-        Amplitude.instance()?.identify(identify)
+        Amplitude.instance().identify(identify)
     }
 
     public func incremen(property: String, by: Double) {
         let identify = AMPIdentify()
         identify.add(property, value: NSNumber(value: by))
-        Amplitude.instance()?.identify(identify)
+        Amplitude.instance().identify(identify)
     }
 
     public func track(event: String, params: [String : Any]?) {
         if let params = params {
-            Amplitude.instance()?.logEvent(
+            Amplitude.instance().logEvent(
                 event,
                 withEventProperties: params.reduce(into: [:]) { $0[$1.key] = $1.value }
             )
         } else {
-            Amplitude.instance()?.logEvent(event)
+            Amplitude.instance().logEvent(event)
         }
     }
 }

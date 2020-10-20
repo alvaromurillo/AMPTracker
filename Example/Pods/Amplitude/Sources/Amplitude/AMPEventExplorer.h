@@ -1,6 +1,8 @@
 //
-//  AMPLocationManagerDelegate.h
-//  Copyright (c) 2014 Amplitude Inc. (https://amplitude.com/)
+//  AMPEventExplorer.h
+//  Amplitude
+//
+//  Copyright (c) 2020 Amplitude Inc. (https://amplitude.com/)
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -22,14 +24,14 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <CoreLocation/CoreLocation.h>
 
-@interface AMPLocationManagerDelegate : NSObject <CLLocationManagerDelegate>
+NS_ASSUME_NONNULL_BEGIN
 
-- (void)locationManager:(CLLocationManager*) manager didFailWithError:(NSError*) error;
+@interface AMPEventExplorer : NSObject
 
-- (void)locationManager:(CLLocationManager*) manager didUpdateToLocation:(CLLocation*) newLocation fromLocation:(CLLocation*) oldLocation;
-
-- (void)locationManager:(CLLocationManager*) manager didChangeAuthorizationStatus:(CLAuthorizationStatus) status;
+- (instancetype)initWithInstanceName:(NSString *)instanceName;
+- (void)showBubbleView;
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -1,8 +1,8 @@
 {
   "name": "AMPTracker",
   "version": "0.1.0",
-  "summary": "A short description of AMPTracker.",
-  "description": "TODO: Add long description of the pod here.",
+  "summary": "Helper to deal with common analytics frameworks",
+  "description": "Helper to deal with common analytics frameworks",
   "homepage": "https://github.com/alvaromurillo/AMPTracker",
   "license": {
     "type": "MIT",
@@ -16,7 +16,8 @@
     "tag": "0.1.0"
   },
   "platforms": {
-    "ios": "11.0"
+    "ios": "11.0",
+    "tvos": "11.0"
   },
   "default_subspecs": "Core",
   "subspecs": [

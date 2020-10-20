@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'AMPTracker'
-  s.version          = '0.1.0'
+  s.version          = '0.1.2'
   s.summary          = 'Helper to deal with common analytics frameworks'
 
   s.description      = <<-DESC
