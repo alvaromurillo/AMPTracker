@@ -11,14 +11,14 @@ let package = Package(
         .library(
             name: "AMPTracker",
             targets: [
-                "Core"
+                "AMPTracker"
             ]
         ),
         .library(
-            name: "AmplitudeTracker",
+            name: "AMPTrackerAmplitude",
             targets: [
-                "Core",
-                "AmplitudeTracker"
+                "AMPTracker",
+                "AMPTrackerAmplitude"
             ]
         )
     ],
@@ -27,15 +27,14 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "Core",
+            name: "AMPTracker",
             dependencies: []
         ),
         .target(
-            name: "AmplitudeTracker",
+            name: "AMPTrackerAmplitude",
             dependencies: [
                 .product(name: "Amplitude", package: "Amplitude-iOS")
-            ],
-            path: "Sources/Amplitude"
+            ]
         )
     ]
 )
