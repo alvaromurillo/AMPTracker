@@ -1,6 +1,0 @@
-framework module AMPTracker {
-  umbrella header "AMPTracker-umbrella.h"
-
-  export *
-  module * { export * }
-}
