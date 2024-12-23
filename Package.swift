@@ -33,6 +33,7 @@ let package = Package(
         .target(
             name: "AMPTrackerAmplitude",
             dependencies: [
+                "AMPTracker",
                 .product(name: "Amplitude", package: "Amplitude-iOS")
             ]
         )
